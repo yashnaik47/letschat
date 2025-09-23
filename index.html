@@ -30,9 +30,15 @@
       background: #4A90E2;
       color: white;
       text-align: center;
-      padding: 12px;
-      font-size: 18px;
+      padding: 10px;
+      font-size: 16px;
       font-weight: bold;
+    }
+    #online-users {
+      font-size: 13px;
+      font-weight: normal;
+      margin-top: 4px;
+      color: #e0e0e0;
     }
     #messages {
       flex: 1;
@@ -100,7 +106,10 @@
 </head>
 <body>
   <div id="chat-box">
-    <div id="header">💬 LetsChat</div>
+    <div id="header">
+      💬 LetsChat
+      <div id="online-users">Online: 0</div>
+    </div>
     <div id="messages"></div>
     <div id="input-box">
       <input type="text" id="messageInput" placeholder="Type a message...">
@@ -108,13 +117,14 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { 
+      getDatabase, ref, push, onChildAdded, onValue, set, onDisconnect 
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // Your Firebase config
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyARMHfTsMVEIoIDHgwS6VmjzWsXuA_cEF8",
       authDomain: "letschat-35ce7.firebaseapp.com",
@@ -134,8 +144,28 @@
     let username = prompt("Enter your name:") || "Guest";
     let roomCode = prompt("Enter chat room code (create any word):") || "general";
 
-    // Reference to a specific room
-    const messagesRef = ref(db, "rooms/" + roomCode);
+    const messagesRef = ref(db, "rooms/" + roomCode + "/messages");
+    const usersRef = ref(db, "rooms/" + roomCode + "/users");
+
+    // Track online presence
+    const userStatusRef = ref(db, "rooms/" + roomCode + "/users/" + username);
+    set(userStatusRef, { online: true });
+    onDisconnect(userStatusRef).remove();
+
+    // Update online users display
+    onValue(usersRef, (snapshot) => {
+      const users = snapshot.val();
+      let onlineCount = 0;
+      let names = [];
+      if (users) {
+        Object.keys(users).forEach(u => {
+          onlineCount++;
+          names.push(u);
+        });
+      }
+      document.getElementById("online-users").textContent =
+        "Online: " + onlineCount + " (" + names.join(", ") + ")";
+    });
 
     // Send message
     document.getElementById("sendBtn").addEventListener("click", sendMessage);
@@ -162,9 +192,7 @@
       msgDiv.classList.add("message");
       msgDiv.classList.add(msg.user === username ? "me" : "other");
 
-      // bold name + text
       msgDiv.innerHTML = `<span class="username">${msg.user}</span>${msg.text}`;
-
       document.getElementById("messages").appendChild(msgDiv);
       document.getElementById("messages").scrollTop =
         document.getElementById("messages").scrollHeight;
