@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>LetsChat</title>
+  <title>LetsChat Rooms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
@@ -12,10 +13,12 @@
       align-items: center;
       height: 100vh;
       margin: 0;
+      padding: 10px;
     }
     #chat-box {
-      width: 420px;
-      height: 550px;
+      width: 100%;
+      max-width: 420px;
+      height: 90vh;
       background: #fff;
       border-radius: 16px;
       box-shadow: 0 6px 15px rgba(0,0,0,0.2);
@@ -28,7 +31,7 @@
       color: white;
       text-align: center;
       padding: 12px;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
     }
     #messages {
@@ -41,7 +44,7 @@
       background: #f7f9fc;
     }
     .message {
-      max-width: 70%;
+      max-width: 75%;
       padding: 10px 14px;
       border-radius: 18px;
       line-height: 1.4;
@@ -59,6 +62,11 @@
       color: #333;
       align-self: flex-start;
       border-bottom-left-radius: 4px;
+    }
+    .username {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 3px;
     }
     #input-box {
       display: flex;
@@ -102,7 +110,6 @@
 
   <!-- Firebase SDK -->
   <script type="module">
-    // Import the functions you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -119,14 +126,16 @@
       measurementId: "G-4W8PGQDER0"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
-    const messagesRef = ref(db, "messages");
 
-    // Ask user name
+    // Ask user details
     let username = prompt("Enter your name:") || "Guest";
+    let roomCode = prompt("Enter chat room code (create any word):") || "general";
+
+    // Reference to a specific room
+    const messagesRef = ref(db, "rooms/" + roomCode);
 
     // Send message
     document.getElementById("sendBtn").addEventListener("click", sendMessage);
@@ -152,7 +161,10 @@
       const msgDiv = document.createElement("div");
       msgDiv.classList.add("message");
       msgDiv.classList.add(msg.user === username ? "me" : "other");
-      msgDiv.textContent = msg.user + ": " + msg.text;
+
+      // bold name + text
+      msgDiv.innerHTML = `<span class="username">${msg.user}</span>${msg.text}`;
+
       document.getElementById("messages").appendChild(msgDiv);
       document.getElementById("messages").scrollTop =
         document.getElementById("messages").scrollHeight;
