@@ -2,116 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>2-Person Chat</title>
+  <title>LetsChat</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      margin: 0;
     }
     #chat-box {
-      width: 400px;
-      height: 500px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+      width: 420px;
+      height: 550px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
+    #header {
+      background: #4A90E2;
+      color: white;
+      text-align: center;
+      padding: 12px;
+      font-size: 20px;
+      font-weight: bold;
+    }
     #messages {
       flex: 1;
-      padding: 10px;
+      padding: 15px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #f7f9fc;
     }
     .message {
-      margin: 5px 0;
-      padding: 8px;
-      border-radius: 6px;
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease-in;
     }
     .me {
-      background: #d1ffd1;
+      background: #4A90E2;
+      color: white;
       align-self: flex-end;
+      border-bottom-right-radius: 4px;
     }
     .other {
-      background: #f1f1f1;
+      background: #e4e6eb;
+      color: #333;
       align-self: flex-start;
+      border-bottom-left-radius: 4px;
     }
     #input-box {
       display: flex;
-      border-top: 1px solid #ccc;
+      border-top: 1px solid #ddd;
+      background: #fff;
     }
-    #input-box input {
+    #messageInput {
       flex: 1;
       border: none;
-      padding: 10px;
+      padding: 12px;
+      font-size: 15px;
       outline: none;
     }
-    #input-box button {
+    #sendBtn {
       border: none;
-      background: #4CAF50;
+      background: #4A90E2;
       color: white;
-      padding: 10px 15px;
+      padding: 0 20px;
       cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    #sendBtn:hover {
+      background: #357ABD;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
   <div id="chat-box">
+    <div id="header">💬 LetsChat</div>
     <div id="messages"></div>
     <div id="input-box">
       <input type="text" id="messageInput" placeholder="Type a message...">
-      <button onclick="sendMessage()">Send</button>
+      <button id="sendBtn">Send</button>
     </div>
   </div>
 
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script type="module">
+    // Import the functions you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-  <script>
-    // Your Firebase config (replace with your own project details)
+    // Your Firebase config
     const firebaseConfig = {
-  apiKey: "AIzaSyARMHfTsMVEIoIDHgwS6VmjzWsXuA_cEF8",
-  authDomain: "letschat-35ce7.firebaseapp.com",
-  databaseURL: "https://letschat-35ce7-default-rtdb.firebaseio.com",
-  projectId: "letschat-35ce7",
-  storageBucket: "letschat-35ce7.firebasestorage.app",
-  messagingSenderId: "805494224705",
-  appId: "1:805494224705:web:007638276106d0941d53c0",
-  measurementId: "G-4W8PGQDER0"
-};
+      apiKey: "AIzaSyARMHfTsMVEIoIDHgwS6VmjzWsXuA_cEF8",
+      authDomain: "letschat-35ce7.firebaseapp.com",
+      databaseURL: "https://letschat-35ce7-default-rtdb.firebaseio.com",
+      projectId: "letschat-35ce7",
+      storageBucket: "letschat-35ce7.firebasestorage.app",
+      messagingSenderId: "805494224705",
+      appId: "1:805494224705:web:007638276106d0941d53c0",
+      measurementId: "G-4W8PGQDER0"
+    };
 
     // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, "messages");
 
-    const messagesRef = db.ref("messages");
+    // Ask user name
+    let username = prompt("Enter your name:") || "Guest";
 
-    let username = prompt("Enter your name:");
+    // Send message
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+    document.getElementById("messageInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
 
     function sendMessage() {
       const msg = document.getElementById("messageInput").value;
       if (msg.trim() !== "") {
-        messagesRef.push({
+        push(messagesRef, {
           user: username,
-          text: msg
+          text: msg,
+          timestamp: Date.now()
         });
         document.getElementById("messageInput").value = "";
       }
     }
 
-    messagesRef.on("child_added", snapshot => {
+    // Receive messages
+    onChildAdded(messagesRef, (snapshot) => {
       const msg = snapshot.val();
       const msgDiv = document.createElement("div");
       msgDiv.classList.add("message");
       msgDiv.classList.add(msg.user === username ? "me" : "other");
       msgDiv.textContent = msg.user + ": " + msg.text;
       document.getElementById("messages").appendChild(msgDiv);
-      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+      document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
     });
   </script>
 </body>
